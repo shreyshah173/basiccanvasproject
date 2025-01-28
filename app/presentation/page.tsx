@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Canvas } from "@/components/canvas"
 import { Toolbar } from "@/components/toolbar"
 import { Sidebar } from "@/components/sidebar"
 import { SlidesNav } from "@/components/slides-nav"
-import { FileControls } from "@/components/file-controls"
 import type { Slide } from "@/types/presentation"
 import { nanoid } from "nanoid"
 
-// Sample data
+// Sample data for elements and charts
 const data = [
   {
     type: "element" as const,
@@ -95,11 +95,20 @@ const createInitialSlide = (): Slide => ({
   selectedElementIndex: null,
 })
 
-export default function Home() {
-  const [width] = useState(1200)
-  const [height] = useState(800)
-  const [slides, setSlides] = useState<Slide[]>(() => [createInitialSlide()])
-  const [currentSlideId, setCurrentSlideId] = useState<string>(() => slides[0].id)
+export default function PresentationPage() {
+  const searchParams = useSearchParams()
+  const width = Number.parseInt(searchParams.get("width") || "1200")
+  const height = Number.parseInt(searchParams.get("height") || "800")
+
+  const [slides, setSlides] = useState<Slide[]>([])
+  const [currentSlideId, setCurrentSlideId] = useState<string>("")
+
+  // Initialize slides on mount
+  useEffect(() => {
+    const initialSlide = createInitialSlide()
+    setSlides([initialSlide])
+    setCurrentSlideId(initialSlide.id)
+  }, [])
 
   const handleAddSlide = () => {
     const newSlide = createInitialSlide()
@@ -107,55 +116,21 @@ export default function Home() {
     setCurrentSlideId(newSlide.id)
   }
 
-  const handleDeleteSlide = (slideId: string) => {
-    setSlides((prev) => {
-      const newSlides = prev.filter((slide) => slide.id !== slideId)
-      // If we're deleting the current slide, select the previous one or the first one
-      if (slideId === currentSlideId) {
-        const currentIndex = prev.findIndex((slide) => slide.id === slideId)
-        const newCurrentSlide = newSlides[currentIndex - 1] || newSlides[0]
-        if (newCurrentSlide) {
-          setCurrentSlideId(newCurrentSlide.id)
-        }
-      }
-      return newSlides
-    })
-  }
-
-  const handleReorderSlides = (startIndex: number, endIndex: number) => {
-    setSlides((prev) => {
-      const result = Array.from(prev)
-      const [removed] = result.splice(startIndex, 1)
-      result.splice(endIndex, 0, removed)
-      return result
-    })
-  }
-
   const handleSlideUpdate = (slideId: string, updates: Partial<Slide>) => {
     setSlides((prev) => prev.map((slide) => (slide.id === slideId ? { ...slide, ...updates } : slide)))
   }
 
-  const handleSlidesLoad = (newSlides: Slide[]) => {
-    setSlides(newSlides)
-    setCurrentSlideId(newSlides[0]?.id || "")
-  }
+  const currentSlide = slides.find((slide) => slide.id === currentSlideId)
 
-  const currentSlide = slides.find((slide) => slide.id === currentSlideId) || slides[0]
-
-  // Prevent the app from crashing if there are no slides
-  if (slides.length === 0) {
-    const initialSlide = createInitialSlide()
-    setSlides([initialSlide])
-    setCurrentSlideId(initialSlide.id)
-    return null
+  if (!currentSlide) {
+    return null // Or a loading state
   }
 
   return (
     <div className="flex h-screen">
       <Toolbar elements={data.filter((item) => item.type === "element")} />
       <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-hidden p-4 relative">
-          <FileControls slides={slides} onSlidesLoad={handleSlidesLoad} />
+        <div className="flex-1 overflow-auto p-4">
           <Canvas slide={currentSlide} width={width} height={height} onUpdate={handleSlideUpdate} />
         </div>
         <SlidesNav
@@ -163,8 +138,6 @@ export default function Home() {
           currentSlideId={currentSlideId}
           onSlideSelect={setCurrentSlideId}
           onAddSlide={handleAddSlide}
-          onDeleteSlide={handleDeleteSlide}
-          onReorderSlides={handleReorderSlides}
           width={width}
           height={height}
         />
