@@ -5,6 +5,9 @@ import { Canvas } from "@/components/canvas"
 import { Toolbar } from "@/components/toolbar"
 import { Sidebar } from "@/components/sidebar"
 import type { CanvasElement } from "@/types/canvas"
+import { createInitialSlide } from "@/utils/slides"
+import type { Slide } from "@/types/presentation"
+import { useState } from "react"
 
 // Sample data as provided
 const data: CanvasElement[] = [
@@ -88,15 +91,24 @@ const data: CanvasElement[] = [
 
 export default function CanvasPage() {
   const searchParams = useSearchParams()
-  const width = Number.parseInt(searchParams.get("width") || "1200")
-  const height = Number.parseInt(searchParams.get("height") || "800")
+  const width = Number(searchParams.get("width")) || 1200
+  const height = Number(searchParams.get("height")) || 800
+
+  const [slides, setSlides] = useState<Slide[]>(() => [createInitialSlide()])
+  const [currentSlideId, setCurrentSlideId] = useState<string>(() => slides[0].id)
+
+  const handleSlideUpdate = (slideId: string, updates: Partial<Slide>) => {
+    setSlides((prev) => prev.map((slide) => (slide.id === slideId ? { ...slide, ...updates } : slide)))
+  }
+
+  const currentSlide = slides.find((slide) => slide.id === currentSlideId) || slides[0]
 
   return (
     <div className="flex h-screen">
       <Toolbar elements={data.filter((item) => item.type === "element")} />
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-auto p-4">
-          <Canvas width={width} height={height} />
+      <div className="flex-1 overflow-hidden">
+        <div className="w-full h-full overflow-auto">
+          <Canvas width={width} height={height} slide={currentSlide} onUpdate={handleSlideUpdate} />
         </div>
       </div>
       <Sidebar elements={data.filter((item) => item.type === "chart")} />

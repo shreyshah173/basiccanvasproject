@@ -1,7 +1,10 @@
+"use client"
+
 import { useEffect, useRef } from "react"
 
 interface DraggableOptions {
   onDragEnd?: (position: { x: number; y: number }) => void
+  enabled?: boolean
 }
 
 export function useDraggable(elementRef: React.RefObject<HTMLElement>, options: DraggableOptions = {}) {
@@ -11,7 +14,7 @@ export function useDraggable(elementRef: React.RefObject<HTMLElement>, options: 
 
   useEffect(() => {
     const element = elementRef.current
-    if (!element) return
+    if (!element || options.enabled === false) return
 
     const handleMouseDown = (e: MouseEvent) => {
       isDragging.current = true

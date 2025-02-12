@@ -10,9 +10,15 @@ interface SidebarProps {
 
 export function Sidebar({ elements }: SidebarProps) {
   const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, element: CanvasElement) => {
-    const stringifiedData = JSON.stringify(element)
-    e.dataTransfer.setData("text/plain", stringifiedData)
-    e.dataTransfer.effectAllowed = "copy"
+    try {
+      // Set multiple data formats for better compatibility
+      const stringifiedData = JSON.stringify(element)
+      e.dataTransfer.setData("application/json", stringifiedData)
+      e.dataTransfer.setData("text/plain", stringifiedData)
+      e.dataTransfer.effectAllowed = "copy"
+    } catch (error) {
+      console.error("Error starting drag:", error)
+    }
   }
 
   return (

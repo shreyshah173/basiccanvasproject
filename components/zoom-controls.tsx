@@ -12,7 +12,7 @@ interface ZoomControlsProps {
 
 export function ZoomControls({ zoom, onZoomIn, onZoomOut, onResetZoom }: ZoomControlsProps) {
   return (
-    <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg">
+    <div className="fixed bottom-4 right-4 flex items-center gap-2 bg-white/80 backdrop-blur-sm p-2 rounded-lg shadow-lg z-50">
       <Button variant="outline" size="icon" onClick={onZoomOut}>
         <Minus className="h-4 w-4" />
       </Button>

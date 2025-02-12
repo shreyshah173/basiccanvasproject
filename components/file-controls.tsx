@@ -64,12 +64,18 @@ export function FileControls({ slides, onSlidesLoad }: FileControlsProps) {
 
   return (
     <>
-      <div className="absolute top-4 right-4 flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={handleDownload} title="Download Presentation">
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleDownload}
+          title="Download Presentation"
+          className="bg-white"
+        >
           <Download className="h-4 w-4" />
         </Button>
         <div className="relative">
-          <Button variant="outline" size="icon" className="relative" title="Upload Presentation">
+          <Button variant="outline" size="icon" className="relative bg-white" title="Upload Presentation">
             <Upload className="h-4 w-4" />
             <input
               type="file"

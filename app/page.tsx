@@ -1,175 +1,92 @@
 "use client"
 
 import { useState } from "react"
-import { Canvas } from "@/components/canvas"
-import { Toolbar } from "@/components/toolbar"
-import { Sidebar } from "@/components/sidebar"
-import { SlidesNav } from "@/components/slides-nav"
-import { FileControls } from "@/components/file-controls"
-import type { Slide } from "@/types/presentation"
-import { nanoid } from "nanoid"
-
-// Sample data
-const data = [
-  {
-    type: "element" as const,
-    name: "Blue Rectangle",
-    svg: `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='60'>
-      <rect width='120' height='60' fill='blue' stroke='black' stroke-width='3' rx='10' ry='10' />
-    </svg>`,
-    x: 50,
-    y: 50,
-    magn: 1,
-    rotation: 0,
-  },
-  {
-    type: "chart" as const,
-    name: "Line Chart",
-    x: 200,
-    y: 300,
-    magn: 1,
-    rotation: 0,
-    config: {
-      chart: {
-        type: "line",
-        width: 400,
-        height: 300,
-      },
-      title: { text: "Line Chart Example" },
-      xAxis: {
-        categories: ["Jan", "Feb", "Mar", "Apr"],
-      },
-      series: [
-        {
-          data: [15, 20, 35, 50],
-          name: "Sales",
-        },
-        {
-          data: [5, 15, 25, 35],
-          name: "Revenue",
-        },
-      ],
-    },
-  },
-  {
-    type: "chart" as const,
-    name: "Doughnut Chart",
-    x: 500,
-    y: 200,
-    magn: 1,
-    rotation: 0,
-    config: {
-      chart: {
-        type: "pie",
-        width: 300,
-        height: 300,
-      },
-      title: { text: "" },
-      plotOptions: {
-        pie: {
-          innerSize: "70%",
-          borderWidth: 2,
-          borderColor: "transparent",
-          dataLabels: {
-            enabled: false,
-          },
-        },
-      },
-      series: [
-        {
-          name: "Data",
-          data: [
-            { name: "Moderate", y: 182, color: "#f6c23e" },
-            { name: "Other", y: 100, color: "#e4e4e4" },
-          ],
-        },
-      ],
-    },
-    centerText: "My Text",
-  },
-]
-
-const createInitialSlide = (): Slide => ({
-  id: nanoid(),
-  elements: [],
-  selectedElementIndex: null,
-})
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
-  const [width] = useState(1200)
-  const [height] = useState(800)
-  const [slides, setSlides] = useState<Slide[]>(() => [createInitialSlide()])
-  const [currentSlideId, setCurrentSlideId] = useState<string>(() => slides[0].id)
+  const router = useRouter()
+  const [dimensions, setDimensions] = useState({
+    width: 1200,
+    height: 800,
+  })
 
-  const handleAddSlide = () => {
-    const newSlide = createInitialSlide()
-    setSlides((prev) => [...prev, newSlide])
-    setCurrentSlideId(newSlide.id)
-  }
-
-  const handleDeleteSlide = (slideId: string) => {
-    setSlides((prev) => {
-      const newSlides = prev.filter((slide) => slide.id !== slideId)
-      // If we're deleting the current slide, select the previous one or the first one
-      if (slideId === currentSlideId) {
-        const currentIndex = prev.findIndex((slide) => slide.id === slideId)
-        const newCurrentSlide = newSlides[currentIndex - 1] || newSlides[0]
-        if (newCurrentSlide) {
-          setCurrentSlideId(newCurrentSlide.id)
-        }
-      }
-      return newSlides
-    })
-  }
-
-  const handleReorderSlides = (startIndex: number, endIndex: number) => {
-    setSlides((prev) => {
-      const result = Array.from(prev)
-      const [removed] = result.splice(startIndex, 1)
-      result.splice(endIndex, 0, removed)
-      return result
-    })
-  }
-
-  const handleSlideUpdate = (slideId: string, updates: Partial<Slide>) => {
-    setSlides((prev) => prev.map((slide) => (slide.id === slideId ? { ...slide, ...updates } : slide)))
-  }
-
-  const handleSlidesLoad = (newSlides: Slide[]) => {
-    setSlides(newSlides)
-    setCurrentSlideId(newSlides[0]?.id || "")
-  }
-
-  const currentSlide = slides.find((slide) => slide.id === currentSlideId) || slides[0]
-
-  // Prevent the app from crashing if there are no slides
-  if (slides.length === 0) {
-    const initialSlide = createInitialSlide()
-    setSlides([initialSlide])
-    setCurrentSlideId(initialSlide.id)
-    return null
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    router.push(`/presentation?width=${dimensions.width}&height=${dimensions.height}`)
   }
 
   return (
-    <div className="flex h-screen">
-      <Toolbar elements={data.filter((item) => item.type === "element")} />
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-hidden p-4 relative">
-          <FileControls slides={slides} onSlidesLoad={handleSlidesLoad} />
-          <Canvas slide={currentSlide} width={width} height={height} onUpdate={handleSlideUpdate} />
-        </div>
-        <SlidesNav
-          slides={slides}
-          currentSlideId={currentSlideId}
-          onSlideSelect={setCurrentSlideId}
-          onAddSlide={handleAddSlide}
-          onDeleteSlide={handleDeleteSlide}
-          onReorderSlides={handleReorderSlides}
-          width={width}
-          height={height}
-        />
-      </div>
-      <Sidebar elements={data.filter((item) => item.type === "chart")} />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-[400px]">
+        <CardHeader>
+          <CardTitle>Canvas Dimensions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="width">Width (px)</Label>
+                <Input
+                  id="width"
+                  type="number"
+                  min={100}
+                  max={1000000}
+                  value={dimensions.width}
+                  onChange={(e) =>
+                    setDimensions((prev) => ({
+                      ...prev,
+                      width: Math.max(100, Math.min(1000000, Number(e.target.value) || 100)),
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="height">Height (px)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  min={100}
+                  max={1000000}
+                  value={dimensions.height}
+                  onChange={(e) =>
+                    setDimensions((prev) => ({
+                      ...prev,
+                      height: Math.max(100, Math.min(1000000, Number(e.target.value) || 100)),
+                    }))
+                  }
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Common Presets</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDimensions({ width: 1920, height: 1080 })}>
+                    1920 × 1080 (16:9)
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setDimensions({ width: 1280, height: 720 })}>
+                    1280 × 720 (16:9)
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setDimensions({ width: 1024, height: 768 })}>
+                    1024 × 768 (4:3)
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setDimensions({ width: 800, height: 600 })}>
+                    800 × 600 (4:3)
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <Button type="submit" className="w-full">
+              Create Canvas
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

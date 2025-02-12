@@ -1,21 +1,19 @@
 "use client"
 
-import { useRef, useEffect, useState, useCallback } from "react"
-import type { CanvasElement } from "@/types/canvas"
-import { Rotate3dIcon as RotateIcon, MaximizeIcon, Trash2Icon, PaintbrushIcon } from "lucide-react"
+import React, { useRef, useState } from "react"
+import type { CanvasElement as CanvasElementType } from "@/types"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from "recharts"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { RotateCw, Maximize, PaintbrushIcon as PaintBrush, Trash2Icon } from "lucide-react"
 
 interface CanvasElementProps {
-  element: CanvasElement
-  canvasWidth: number
-  canvasHeight: number
-  onMove: (position: { x: number; y: number }) => void
-  onUpdate: (updates: Partial<CanvasElement>) => void
-  onSelect: () => void
-  onDelete: () => void
+  element: CanvasElementType
   isSelected: boolean
+  onSelect: () => void
+  onMove: (position: { x: number; y: number }) => void
+  onUpdate: (updates: Partial<CanvasElementType>) => void
+  onDelete: () => void
 }
 
 const COLORS = [
@@ -33,127 +31,88 @@ const COLORS = [
   "#808000",
 ]
 
-export function CanvasElement({
-  element,
-  canvasWidth,
-  canvasHeight,
-  onMove,
-  onUpdate,
-  onSelect,
-  onDelete,
-  isSelected,
-}: CanvasElementProps) {
+export function CanvasElement({ element, isSelected, onSelect, onMove, onUpdate, onDelete }: CanvasElementProps) {
   const elementRef = useRef<HTMLDivElement>(null)
-  const controlsRef = useRef<HTMLDivElement>(null)
-  const isDragging = useRef(false)
-  const isRotating = useRef(false)
-  const isScaling = useRef(false)
-  const startPos = useRef({ x: 0, y: 0 })
-  const startAngle = useRef(0)
-  const startScale = useRef(1)
-  const [isPartiallyOutside, setIsPartiallyOutside] = useState(false)
-
-  const getCenter = useCallback(() => {
-    if (!elementRef.current) return { x: 0, y: 0 }
-    const rect = elementRef.current.getBoundingClientRect()
-    return {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-    }
-  }, [])
-
-  useEffect(() => {
-    const checkBoundaries = () => {
-      if (!elementRef.current) return
-
-      const rect = elementRef.current.getBoundingClientRect()
-      const canvas = elementRef.current.parentElement?.getBoundingClientRect()
-
-      if (canvas) {
-        const isOutside =
-          rect.left < canvas.left - rect.width ||
-          rect.right > canvas.right + rect.width ||
-          rect.top < canvas.top - rect.height ||
-          rect.bottom > canvas.bottom + rect.height
-
-        setIsPartiallyOutside(isOutside)
-      }
-    }
-
-    const observer = new ResizeObserver(checkBoundaries)
-    if (elementRef.current) {
-      observer.observe(elementRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
+  const [isDragging, setIsDragging] = useState(false)
+  const [isRotating, setIsRotating] = useState(false)
+  const [isResizing, setIsResizing] = useState(false)
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 })
+  const [startAngle, setStartAngle] = useState(0)
+  const [startScale, setStartScale] = useState(1)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation()
-    isDragging.current = true
-    startPos.current = {
+    if (e.button !== 0) return // Only handle left click
+    setIsDragging(true)
+    setStartPos({
       x: e.clientX - element.x,
       y: e.clientY - element.y,
-    }
+    })
     onSelect()
   }
 
   const handleRotateStart = (e: React.MouseEvent) => {
     e.stopPropagation()
-    isRotating.current = true
-    const center = getCenter()
-    startAngle.current = Math.atan2(e.clientY - center.y, e.clientX - center.x) - (element.rotation * Math.PI) / 180
+    setIsRotating(true)
+    const rect = elementRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    setStartAngle(Math.atan2(e.clientY - centerY, e.clientX - centerX) - (element.rotation * Math.PI) / 180)
   }
 
-  const handleScaleStart = (e: React.MouseEvent) => {
+  const handleResizeStart = (e: React.MouseEvent) => {
     e.stopPropagation()
-    isScaling.current = true
-    const center = getCenter()
-    startScale.current = element.magn
-    startPos.current = {
-      x: e.clientX - center.x,
-      y: e.clientY - center.y,
+    setIsResizing(true)
+    setStartPos({ x: e.clientX, y: e.clientY })
+    setStartScale(element.magn)
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      onMove({
+        x: e.clientX - startPos.x,
+        y: e.clientY - startPos.y,
+      })
+    }
+
+    if (isRotating) {
+      const rect = elementRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const centerX = rect.left + rect.width / 2
+      const centerY = rect.top + rect.height / 2
+      const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX)
+      const newRotation = ((angle - startAngle) * 180) / Math.PI
+      onUpdate({ rotation: newRotation })
+    }
+
+    if (isResizing) {
+      const dx = e.clientX - startPos.x
+      const dy = e.clientY - startPos.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      const scale = Math.max(0.1, startScale + distance * 0.01 * (dx > 0 ? 1 : -1))
+      onUpdate({ magn: scale })
     }
   }
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging.current) {
-        const x = Math.min(Math.max(0, e.clientX - startPos.current.x), canvasWidth)
-        const y = Math.min(Math.max(0, e.clientY - startPos.current.y), canvasHeight)
-        onMove({ x, y })
-      }
+  const handleMouseUp = () => {
+    setIsDragging(false)
+    setIsRotating(false)
+    setIsResizing(false)
+  }
 
-      if (isRotating.current) {
-        const center = getCenter()
-        const angle = Math.atan2(e.clientY - center.y, e.clientX - center.x)
-        const newRotation = ((angle - startAngle.current) * 180) / Math.PI
-        onUpdate({ rotation: newRotation })
-      }
-
-      if (isScaling.current) {
-        const center = getCenter()
-        const currentDistance = Math.hypot(e.clientX - center.x, e.clientY - center.y)
-        const startDistance = Math.hypot(startPos.current.x, startPos.current.y)
-        const scale = (currentDistance / startDistance) * startScale.current
-        onUpdate({ magn: Math.min(Math.max(0.5, scale), 2) })
+  React.useEffect(() => {
+    if (isDragging || isRotating || isResizing) {
+      window.addEventListener("mousemove", handleMouseMove)
+      window.addEventListener("mouseup", handleMouseUp)
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove)
+        window.removeEventListener("mouseup", handleMouseUp)
       }
     }
-
-    const handleMouseUp = () => {
-      isDragging.current = false
-      isRotating.current = false
-      isScaling.current = false
-    }
-
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
-    }
-  }, [canvasHeight, canvasWidth, onMove, onUpdate, getCenter])
+  }, [isDragging, isRotating, isResizing, handleMouseMove]) // Added handleMouseMove to dependencies
 
   const handleColorChange = (color: string) => {
     if (element.type === "element") {
@@ -167,11 +126,7 @@ export function CanvasElement({
     }
   }
 
-  const renderElement = () => {
-    if (element.type === "element") {
-      return <div dangerouslySetInnerHTML={{ __html: element.svg }} className="select-none" />
-    }
-
+  const renderChart = () => {
     if (element.type === "chart") {
       if (element.config.chart.type === "line") {
         return (
@@ -216,7 +171,7 @@ export function CanvasElement({
                 outerRadius={150}
                 dataKey="y"
               >
-                {element.config.series[0].data.map((entry, index) => (
+                {element.config.series[0].data.map((entry: any, index: number) => (
                   <Cell key={index} fill={entry.color} />
                 ))}
               </Pie>
@@ -231,34 +186,78 @@ export function CanvasElement({
         )
       }
     }
+
+    if (element.type === "element") {
+      return <div dangerouslySetInnerHTML={{ __html: element.svg }} />
+    }
   }
 
-  const renderControls = () => {
-    if (!isSelected) return null
+  return (
+    <div
+      ref={elementRef}
+      className={`absolute cursor-move ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
+      style={{
+        transform: `translate(${element.x}px, ${element.y}px) rotate(${element.rotation}deg) scale(${element.magn})`,
+        transformOrigin: "center",
+      }}
+      onMouseDown={handleMouseDown}
+    >
+      {renderChart()}
 
-    return (
-      <div ref={controlsRef} className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <div
-            className="flex items-center justify-center w-8 h-8 bg-white border border-gray-200 text-gray-800 rounded-full cursor-pointer pointer-events-auto hover:bg-gray-50 shadow-md"
+      {/* Controls overlay when selected */}
+      {isSelected && (
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Rotation control */}
+          <Button
+            size="icon"
+            variant="outline"
+            className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full pointer-events-auto"
             onMouseDown={handleRotateStart}
           >
-            <RotateIcon className="w-4 h-4" />
-          </div>
+            <RotateCw className="h-4 w-4" />
+          </Button>
 
+          {/* Delete control */}
+          <Button
+            size="icon"
+            variant="outline"
+            className="absolute -top-8 -right-8 w-8 h-8 rounded-full pointer-events-auto hover:bg-destructive hover:text-destructive-foreground"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+          >
+            <Trash2Icon className="h-4 w-4" />
+          </Button>
+
+          {/* Resize control */}
+          <Button
+            size="icon"
+            variant="outline"
+            className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full pointer-events-auto"
+            onMouseDown={handleResizeStart}
+          >
+            <Maximize className="h-4 w-4" />
+          </Button>
+
+          {/* Color picker for SVG elements */}
           {element.type === "element" && (
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex items-center justify-center w-8 h-8 bg-white border border-gray-200 text-gray-800 rounded-full cursor-pointer pointer-events-auto hover:bg-gray-50 shadow-md">
-                  <PaintbrushIcon className="w-4 h-4" />
-                </div>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="absolute -top-8 -right-8 w-8 h-8 rounded-full pointer-events-auto"
+                >
+                  <PaintBrush className="h-4 w-4" />
+                </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64">
-                <div className="grid grid-cols-6 gap-2 p-2">
+                <div className="grid grid-cols-6 gap-2">
                   {COLORS.map((color) => (
                     <button
                       key={color}
-                      className="w-8 h-8 rounded-full border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                      className="w-8 h-8 rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: color }}
                       onClick={() => handleColorChange(color)}
                     />
@@ -267,41 +266,8 @@ export function CanvasElement({
               </PopoverContent>
             </Popover>
           )}
-
-          <Button
-            size="icon"
-            variant="outline"
-            className="w-8 h-8 rounded-full pointer-events-auto bg-white hover:bg-red-50 border border-red-200 text-red-500"
-            onClick={onDelete}
-          >
-            <Trash2Icon className="w-4 h-4" />
-          </Button>
         </div>
-
-        <div
-          className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-8 bg-white border border-gray-200 text-gray-800 rounded-full cursor-pointer pointer-events-auto hover:bg-gray-50 shadow-md"
-          onMouseDown={handleScaleStart}
-        >
-          <MaximizeIcon className="w-4 h-4" />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      ref={elementRef}
-      className={`absolute cursor-move ${
-        isSelected ? "ring-2 ring-primary ring-offset-2" : ""
-      } ${isPartiallyOutside ? "opacity-50 blur-[2px]" : ""}`}
-      style={{
-        transform: `translate(${element.x}px, ${element.y}px) rotate(${element.rotation}deg) scale(${element.magn})`,
-        transformOrigin: "center",
-      }}
-      onMouseDown={handleMouseDown}
-    >
-      {renderElement()}
-      {renderControls()}
+      )}
     </div>
   )
 }
