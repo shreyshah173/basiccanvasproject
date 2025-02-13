@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Pencil, Type, Eraser, Circle, Move } from "lucide-react"
+import { Pencil, Type, Eraser, Circle, Undo2, Redo2, Move } from "lucide-react"
 
 interface DrawingControlsProps {
   activeTool: "line" | "text" | "eraser" | "pan" | null
@@ -81,11 +81,11 @@ export function DrawingControls({
       <div className="w-px h-6 bg-gray-200 mx-1" />
 
       <Button variant="outline" size="icon" onClick={onUndo} disabled={!canUndo} title="Undo">
-        Undo
+        <Undo2 className="h-4 w-4" />
       </Button>
 
       <Button variant="outline" size="icon" onClick={onRedo} disabled={!canRedo} title="Redo">
-        Redo
+        <Redo2 className="h-4 w-4" />
       </Button>
 
       <div className="w-px h-6 bg-gray-200 mx-1" />

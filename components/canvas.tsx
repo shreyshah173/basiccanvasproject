@@ -10,15 +10,12 @@ import { DrawingControls } from "./drawing-controls"
 import { ZoomControls } from "./zoom-controls"
 import { TextElement } from "./text-element"
 
-
-
 interface CanvasProps {
   slide: Slide
   width: number
   height: number
   onUpdate: (slideId: string, updates: Partial<Slide>) => void
 }
-
 
 export function Canvas({ slide, width, height, onUpdate }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -264,13 +261,6 @@ export function Canvas({ slide, width, height, onUpdate }: CanvasProps) {
 
   const { history, canUndo, canRedo, undo, redo, update } = useHistory([slide])
 
-  const handleUpdate = (updates: Partial<Slide>) => {
-    const newSlide = { ...slide, ...updates };
-    update(newSlide); 
-    onUpdate(slide.id, newSlide);
-  };
-
-
   const handleUndo = () => {
     const previousState = undo()
     if (previousState) {
@@ -337,7 +327,6 @@ export function Canvas({ slide, width, height, onUpdate }: CanvasProps) {
             onSelect={() => setSelectedElementIndex(index)}
             onMove={(position) => handleElementUpdate(index, position)}
             onUpdate={(updates) => handleElementUpdate(index, updates)}
-            
             onDelete={() => {
               const newElements = [...(slide.elements || [])]
               newElements.splice(index, 1)
